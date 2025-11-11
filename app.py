@@ -32,7 +32,19 @@ for roster in rosters:
             player_names.append(name)
         else:
             player_names.append(f"Unknown Player ({pid})")
+for name in player_names:
+    stats = fantasy_stats.get(name)
+    if stats:
+        print(f"     - {name} | PPR Avg: {stats['avg_points']} | Pos Rank: {stats['pos_rank']}")
+
 
     print(f"🏈 Team: {team_name} | Roster ID: {roster_id}")
     print(f"   Players: {', '.join(player_names) if player_names else 'No players listed'}\n")
+def get_fantasypros_stats():
+    url = "http://localhost:8000/players?scoring=PPR"
+    response = requests.get(url)
+    return {p['name']: p for p in response.json()}
+
+fantasy_stats = get_fantasypros_stats()
+
 
