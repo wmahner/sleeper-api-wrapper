@@ -13,7 +13,10 @@ users = league.get_users()
 matchups = league.get_matchups(week)
 
 # Build lookup maps
-owner_map = {user['user_id']: user['display_name'] for user in users}
+owner_map = {
+    user['user_id']: user.get('display_name') or user.get('metadata', {}).get('team_name') or user.get('username', f"User {user['user_id']}")
+    for user in users
+}
 roster_map = {r['roster_id']: r for r in rosters}
 
 # Group matchups by matchup_id
