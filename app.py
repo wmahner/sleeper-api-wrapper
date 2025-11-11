@@ -1,11 +1,14 @@
-from sleeper_wrapper import League, Players
+from sleeper_wrapper import League, Players, Stats
 import requests
 
-league_id = '1207447597271232512'
+# Configuration
+league_id = 'YOUR_LEAGUE_ID'  # Replace with your actual league ID
 week = 10
 
+# Initialize API clients
 league = League(league_id)
 players = Players()
+stats_client = Stats()
 
 # Fetch league data
 rosters = league.get_rosters()
@@ -13,6 +16,7 @@ users = league.get_users()
 matchups = league.get_matchups(week)
 player_dict = players.get_all_players()
 
+# Build lookup maps
 owner_map = {user['user_id']: user['display_name'] for user in users}
 roster_map = {r['roster_id']: r for r in rosters}
 
@@ -41,6 +45,7 @@ for roster in rosters:
     starters = set(roster.get('starters', []))
     all_players = roster.get('players', [])
     settings = roster.get('settings', {})
+
     wins = settings.get('wins', 0)
     losses = settings.get('losses', 0)
     ties = settings.get('ties', 0)
@@ -60,7 +65,7 @@ for roster in rosters:
     for pid in all_players:
         player_info = player_dict.get(pid)
         name = player_info.get('full_name', f"Unknown ({pid})")
-        stats = league.get_player_stats(pid, week)
+        stats = stats_client.get_player_week_stats(week, pid)
         ppr = stats.get('pts_ppr', 0)
         is_starter = "Starter" if pid in starters else "Bench"
         print(f"     - {name} ({is_starter}) | PPR: {ppr}")
@@ -118,7 +123,7 @@ for group in matchup_groups.values():
         starters = set(team['starters'])
         all_players = team['players']
         bench = [p for p in all_players if p not in starters]
-        bench_points = sum([league.get_player_stats(p, week).get('pts_ppr', 0) for p in bench])
+        bench_points = sum([stats_client.get_player_week_stats(week, p).get('pts_ppr', 0) for p in bench])
         name = owner_map.get(roster_map[team['roster_id']]['owner_id'], "Unknown")
         if bench_points > awards["bench_blunder"][1]:
             awards["bench_blunder"] = (name, bench_points)
@@ -133,6 +138,8 @@ print(f"🔥 Hot Hand: {awards['hot_hand'][1]} from {awards['hot_hand'][0]} scor
 print(f"🧠 Best Bench: {awards['best_bench'][0]} with {awards['best_bench'][1]:.2f} pts")
 print(f"😴 Worst Bench: {awards['worst_bench'][0]} with {awards['worst_bench'][1]:.2f} pts")
 print(f"💀 Worst Overall: {awards['worst_overall'][0]} with {awards['worst_overall'][1]:.2f} total pts")
+
+
 
 
 
