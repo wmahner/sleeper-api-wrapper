@@ -1,15 +1,38 @@
-from sleeper_wrapper import League
-import requests
+from sleeper_wrapper import League, Players
 
+# Replace with your actual league ID
 league_id = '1207447597271232512'
-league = League(league_id)
 
-try:
-    rosters = league.get_rosters()
-    print(f"Found {len(rosters)} rosters:")
-    for roster in rosters:
-        print(f"Roster ID: {roster['roster_id']}, Owner ID: {roster['owner_id']}")
-except requests.exceptions.HTTPError as err:
-    print(f"HTTP error occurred: {err}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
+# Initialize League and Players
+league = League(league_id)
+players = Players()
+
+# Get all rosters and users in the league
+rosters = league.get_rosters()
+users = league.get_users()
+player_dict = players.get_all_players()
+
+# Create a mapping from owner_id to display_name
+owner_map = {user['user_id']: user['display_name'] for user in users}
+
+print(f"\n📋 Found {len(rosters)} rosters in league {league_id}:\n")
+
+for roster in rosters:
+    owner_id = roster['owner_id']
+    team_name = owner_map.get(owner_id, f"Unknown Team ({owner_id})")
+    roster_id = roster['roster_id']
+    player_ids = roster.get('players', [])
+
+    # Convert player IDs to names
+    player_names = []
+    for pid in player_ids:
+        player_info = player_dict.get(pid)
+        if player_info:
+            name = player_info.get('full_name') or f"{player_info.get('first_name', '')} {player_info.get('last_name', '')}".strip()
+            player_names.append(name)
+        else:
+            player_names.append(f"Unknown Player ({pid})")
+
+    print(f"🏈 Team: {team_name} | Roster ID: {roster_id}")
+    print(f"   Players: {', '.join(player_names) if player_names else 'No players listed'}\n")
+
