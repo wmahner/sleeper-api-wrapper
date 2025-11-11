@@ -1,16 +1,21 @@
 from sleeper_wrapper import League
+import requests
 
 # Configuration
-league_id = 'YOUR_LEAGUE_ID'  # Replace with your actual Sleeper league ID
+league_id = '1207447597271232512'  # Replace with your actual Sleeper league ID
 week = 10
 
 # Initialize Sleeper API
 league = League(league_id)
 
-# Fetch league data
-rosters = league.get_rosters()
-users = league.get_users()
-matchups = league.get_matchups(week)
+# Fetch league data with error handling
+try:
+    rosters = league.get_rosters()
+    users = league.get_users()
+    matchups = league.get_matchups(week)
+except requests.exceptions.HTTPError as err:
+    print(f"❌ Failed to fetch league data: {err}")
+    exit(1)
 
 # Build lookup maps
 owner_map = {
@@ -115,7 +120,6 @@ print("\n📈 Playoff Standings:")
 ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
 for i, team in enumerate(ranked, start=1):
     print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
-
 
 
 
