@@ -1,7 +1,7 @@
 from sleeper_wrapper import League
 
 # Configuration
-league_id = 'YOUR_LEAGUE_ID'  # Replace with your actual Sleeper league ID
+league_id = '1207447597271232512'  # Replace with your actual Sleeper league ID
 week = 10
 
 # Initialize Sleeper API
