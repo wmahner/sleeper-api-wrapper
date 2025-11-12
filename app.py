@@ -10,7 +10,7 @@ users = league.get_users()
 
 # Build lookup maps
 owner_map = {
-    user['user_id']: user.get('display_name') or user.get('metadata', {}).get('team_name') or user.get('username', f"User {user['user_id']}")
+    user['user_id']: user.get('metadata', {}).get('team_name') or user.get('display_name') or user.get('username', f"User {user['user_id']}")
     for user in users
 }
 roster_map = {r['roster_id']: r for r in rosters}
@@ -93,3 +93,4 @@ print("\n📈 Current Standings (Weeks 1–10):")
 ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
 for i, team in enumerate(ranked, start=1):
     print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
+
