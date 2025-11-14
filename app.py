@@ -1,96 +1,101 @@
-from sleeper_wrapper import League
+from sleeper_wrapper import League, Players
+import pandas as pd
 
-# Configuration
-league_id = '1207447597271232512'
-league = League(league_id)
+LEAGUE_ID = "1207447597271232512"
+WEEK = 10
+SCORING = "pts_ppr"
 
-# Fetch static league data
-rosters = league.get_rosters()
-users = league.get_users()
+league = League(LEAGUE_ID)
+players_api = Players()
 
-# Build lookup maps
-owner_map = {
-    user['user_id']: user.get('metadata', {}).get('team_name') or user.get('display_name') or user.get('username', f"User {user['user_id']}")
-    for user in users
-}
-roster_map = {r['roster_id']: r for r in rosters}
+rosters   = league.get_rosters()
+users     = league.get_users()
+matchups  = league.get_matchups(WEEK)
+all_players = players_api.get_all_players()
 
-# Track cumulative records
-team_records = {r['owner_id']: {"name": owner_map.get(r['owner_id'], "Unknown"), "wins": 0, "losses": 0, "ties": 0, "points": 0} for r in rosters}
+owner_to_team = {}
+for u in users:
+    uid = u["user_id"]
+    raw = u.get("metadata", {}).get("team_name")
+    if not raw or not raw.strip():
+        raw = u.get("display_name") or u.get("username")
+    owner_to_team[uid] = raw.strip()               # <-- STRIP
 
-print("\n📋 League Summary Weeks 1–10:\n")
+roster_to_team = {}
+for r in rosters:
+    rid = r["roster_id"]
+    oid = r["owner_id"]
+    roster_to_team[rid] = owner_to_team.get(oid, f"Team_{rid}")
 
-for week in range(1, 11):
-    print(f"\n🗓️ Week {week}:\n")
-    matchups = league.get_matchups(week)
+lineup_rows = []
+player_scores = {}
+for m in matchups:
+    rid = m["roster_id"]
+    for pid, pts in m.get("players_points", {}).items():
+        player_scores[(rid, pid)] = pts
 
-    # Group matchups
-    matchup_groups = {}
-    for m in matchups:
-        matchup_groups.setdefault(m['matchup_id'], []).append(m)
+for r in rosters:
+    rid = r["roster_id"]
+    team = roster_to_team[rid]
+    starters = set(r.get("starters", []))
+    for pid in r.get("players", []):
+        p = all_players.get(pid, {})
+        lineup_rows.append({
+            "week": WEEK,
+            "team_name": team,
+            "player_name": p.get("full_name", pid),
+            "position": p.get("position", "??"),
+            "slot": "Starter" if pid in starters else "Bench",
+            SCORING: player_scores.get((rid, pid), 0.0)
+        })
 
-    # Awards
-    awards = {
-        "high_score": ("", 0),
-        "low_score": ("", float('inf')),
-        "closest_win": ("", float('inf'))
-    }
+df_lineups = pd.DataFrame(lineup_rows)
+df_lineups = df_lineups.sort_values(["team_name", "slot", SCORING], ascending=[True, True, False])
+df_lineups.to_csv("lineups_ppr_week10.csv", index=False)
 
-    # Matchup awards
-    for group in matchup_groups.values():
-        if len(group) != 2:
-            continue
-        team1, team2 = group
-        score1 = team1['points']
-        score2 = team2['points']
-        rid1 = team1['roster_id']
-        rid2 = team2['roster_id']
-        owner1 = roster_map[rid1]['owner_id']
-        owner2 = roster_map[rid2]['owner_id']
-        name1 = team_records[owner1]['name']
-        name2 = team_records[owner2]['name']
 
-        print(f"⚔️ Matchup: {name1} ({score1:.2f}) vs {name2} ({score2:.2f})")
+scoreboard_rows = []
+for m in matchups:
+    rid = m["roster_id"]
+    team = roster_to_team[rid]
+    score = m.get("points", 0.0)
+    opp_rid = next(
+        (mm["roster_id"] for mm in matchups
+         if mm["matchup_id"] == m["matchup_id"] and mm["roster_id"] != rid),
+        None
+    )
+    opp_team = roster_to_team.get(opp_rid, "Bye")
+    opp_score = next((mm.get("points", 0.0) for mm in matchups if mm["roster_id"] == opp_rid), 0.0)
 
-        # Update points
-        team_records[owner1]['points'] += score1
-        team_records[owner2]['points'] += score2
+    scoreboard_rows.append({
+        "week": WEEK,
+        "team_name": team,
+        "score": score,
+        "opponent": opp_team,
+        "opp_score": opp_score,
+        "win": score > opp_score
+    })
 
-        # Update wins/losses/ties
-        if score1 > score2:
-            team_records[owner1]['wins'] += 1
-            team_records[owner2]['losses'] += 1
-        elif score2 > score1:
-            team_records[owner2]['wins'] += 1
-            team_records[owner1]['losses'] += 1
-        else:
-            team_records[owner1]['ties'] += 1
-            team_records[owner2]['ties'] += 1
+df_scoreboard = pd.DataFrame(scoreboard_rows)
+df_scoreboard.to_csv("scoreboard_week10.csv", index=False)
 
-        # Awards
-        if score1 > awards["high_score"][1]:
-            awards["high_score"] = (name1, score1)
-        if score2 > awards["high_score"][1]:
-            awards["high_score"] = (name2, score2)
-        if score1 < awards["low_score"][1]:
-            awards["low_score"] = (name1, score1)
-        if score2 < awards["low_score"][1]:
-            awards["low_score"] = (name2, score2)
 
-        diff = abs(score1 - score2)
-        if diff < awards["closest_win"][1]:
-            winner = name1 if score1 > score2 else name2
-            awards["closest_win"] = (winner, diff)
+standings_raw = league.get_standings(rosters, users)
+stand_rows = []
+for rank, (raw, w, l, pf) in enumerate(standings_raw, 1):
+    clean = raw.strip()                                   # <-- STRIP
+    owner_id = next((oid for oid, t in owner_to_team.items() if t == clean), None)
+    team = owner_to_team.get(owner_id, clean) if owner_id else clean
+    stand_rows.append({
+        "rank": rank,
+        "team_name": team,
+        "record": f"{w}-{l}",
+        "pf": float(pf)
+    })
 
-    # Print awards
-    print(f"\n🏆 Week {week} Awards:")
-    print(f"🥇 High Score: {awards['high_score'][0]} with {awards['high_score'][1]:.2f} pts")
-    print(f"🥄 Low Score: {awards['low_score'][0]} with {awards['low_score'][1]:.2f} pts")
-    print(f"⚔️ Closest Win: {awards['closest_win'][0]} won by {awards['closest_win'][1]:.2f} pts")
+df_standings = pd.DataFrame(stand_rows)
+df_standings.to_csv("standings.csv", index=False)
 
-# Final standings
-print("\n📈 Current Standings (Weeks 1–10):")
-ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
-for i, team in enumerate(ranked, start=1):
-    print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
-
+all_teams = set(df_lineups["team_name"]).union(df_scoreboard["team_name"]).union(df_standings["team_name"])
+print("Teams (no spaces):", sorted(all_teams))
+print("MATCHED?", len(all_teams) == len(df_standings))
