@@ -25,7 +25,8 @@ team_records = {
         "wins": 0,
         "losses": 0,
         "ties": 0,
-        "points": 0
+        "points": 0,
+        "points_against": 0
     }
     for roster in rosters
 }
@@ -68,6 +69,10 @@ for week in range(1, 13):
         team_records[owner1]['points'] += score1
         team_records[owner2]['points'] += score2
 
+        # Update points against
+        team_records[owner1]['points_against'] += score2
+        team_records[owner2]['points_against'] += score1
+
         # Update wins/losses/ties
         if score1 > score2:
             team_records[owner1]['wins'] += 1
@@ -104,5 +109,8 @@ for week in range(1, 13):
 print("\n📈 Current Standings (Weeks 1–12):")
 ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
 for i, team in enumerate(ranked, start=1):
-    print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
+    print(
+        f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, "
+        f"Points For: {team['points']:.2f}, Points Against: {team['points_against']:.2f}"
+    )
 
