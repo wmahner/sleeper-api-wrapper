@@ -18,9 +18,9 @@ roster_map = {r['roster_id']: r for r in rosters}
 # Track cumulative records
 team_records = {r['owner_id']: {"name": owner_map.get(r['owner_id'], "Unknown"), "wins": 0, "losses": 0, "ties": 0, "points": 0} for r in rosters}
 
-print("\n📋 League Summary Weeks 1–10:\n")
+print("\n📋 League Summary Weeks 1–12:\n")
 
-for week in range(1, 12):
+for week in range(1, 13):
     print(f"\n🗓️ Week {week}:\n")
     matchups = league.get_matchups(week)
 
@@ -89,7 +89,7 @@ for week in range(1, 12):
     print(f"⚔️ Closest Win: {awards['closest_win'][0]} won by {awards['closest_win'][1]:.2f} pts")
 
 # Final standings
-print("\n📈 Current Standings (Weeks 1–12):")
+print("\n📈 Current Standings (Weeks 1–13):")
 ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
 for i, team in enumerate(ranked, start=1):
     print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
