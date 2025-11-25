@@ -8,15 +8,27 @@ league = League(league_id)
 rosters = league.get_rosters()
 users = league.get_users()
 
-# Build lookup maps
+# Build lookup maps (prioritize nickname)
 owner_map = {
-    user['user_id']: user.get('display_name') or user.get('metadata', {}).get('team_name') or user.get('username', f"User {user['user_id']}")
+    user['user_id']: user.get('metadata', {}).get('nickname')
+        or user.get('metadata', {}).get('team_name')
+        or user.get('display_name')
+        or user.get('username', f"User {user['user_id']}")
     for user in users
 }
-roster_map = {r['roster_id']: r for r in rosters}
+roster_map = {roster['roster_id']: roster for roster in rosters}
 
 # Track cumulative records
-team_records = {r['owner_id']: {"name": owner_map.get(r['owner_id'], "Unknown"), "wins": 0, "losses": 0, "ties": 0, "points": 0} for r in rosters}
+team_records = {
+    roster['owner_id']: {
+        "name": owner_map.get(roster['owner_id'], "Unknown"),
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "points": 0
+    }
+    for roster in rosters
+}
 
 print("\n📋 League Summary Weeks 1–12:\n")
 
@@ -24,10 +36,10 @@ for week in range(1, 13):
     print(f"\n🗓️ Week {week}:\n")
     matchups = league.get_matchups(week)
 
-    # Group matchups
+    # Group matchups by matchup_id
     matchup_groups = {}
-    for m in matchups:
-        matchup_groups.setdefault(m['matchup_id'], []).append(m)
+    for matchup in matchups:
+        matchup_groups.setdefault(matchup['matchup_id'], []).append(matchup)
 
     # Awards
     awards = {
@@ -36,7 +48,7 @@ for week in range(1, 13):
         "closest_win": ("", float('inf'))
     }
 
-    # Matchup awards
+    # Process matchups
     for group in matchup_groups.values():
         if len(group) != 2:
             continue
@@ -52,7 +64,7 @@ for week in range(1, 13):
 
         print(f"⚔️ Matchup: {name1} ({score1:.2f}) vs {name2} ({score2:.2f})")
 
-        # Update points
+        # Update cumulative points
         team_records[owner1]['points'] += score1
         team_records[owner2]['points'] += score2
 
@@ -82,14 +94,15 @@ for week in range(1, 13):
             winner = name1 if score1 > score2 else name2
             awards["closest_win"] = (winner, diff)
 
-    # Print awards
+    # Print weekly awards
     print(f"\n🏆 Week {week} Awards:")
     print(f"🥇 High Score: {awards['high_score'][0]} with {awards['high_score'][1]:.2f} pts")
     print(f"🥄 Low Score: {awards['low_score'][0]} with {awards['low_score'][1]:.2f} pts")
     print(f"⚔️ Closest Win: {awards['closest_win'][0]} won by {awards['closest_win'][1]:.2f} pts")
 
 # Final standings
-print("\n📈 Current Standings (Weeks 1–13):")
+print("\n📈 Current Standings (Weeks 1–12):")
 ranked = sorted(team_records.values(), key=lambda x: (-x['wins'], -x['points']))
 for i, team in enumerate(ranked, start=1):
     print(f"{i}. {team['name']} — Record: {team['wins']}-{team['losses']}-{team['ties']}, Total Points: {team['points']:.2f}")
+
