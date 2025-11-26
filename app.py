@@ -27,6 +27,8 @@ lineup_rows = []
 scoreboard_rows = []
 stand_rows = []
 
+print("\n📋 League Summary Weeks 1–12:\n")
+
 for WEEK in range(1, 13):
     matchups = league.get_matchups(WEEK)
 
@@ -65,6 +67,7 @@ for WEEK in range(1, 13):
     }
 
     # Build scoreboard and track awards
+    print(f"\n🗓️ Week {WEEK} Results:\n")
     for m in matchups:
         rid = m["roster_id"]
         team = roster_to_team[rid]
@@ -76,6 +79,8 @@ for WEEK in range(1, 13):
         )
         opp_team = roster_to_team.get(opp_rid, "Bye")
         opp_score = next((mm.get("points", 0.0) for mm in matchups if mm["roster_id"] == opp_rid), 0.0)
+
+        print(f"⚔️ {team} ({score:.2f}) vs {opp_team} ({opp_score:.2f})")
 
         scoreboard_rows.append({
             "week": WEEK,
@@ -133,6 +138,8 @@ df_standings = pd.DataFrame(stand_rows)
 df_standings.to_csv("standings.csv", index=False)
 
 print("\n📈 Final Standings exported to standings.csv")
+
+
 
 
 
